@@ -612,6 +612,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 	// refresh states for all pods
 	var modified bool
 	for _, pod := range pods {
+		// TODO 刷新Pod状态
 		refreshed, duration, err := ssc.refreshPodState(set, pod)
 		if err != nil {
 			return &status, err
@@ -636,6 +637,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 		// delete the Pod if it is not already terminating and does not match the update revision.
 		if getPodRevision(replicas[target]) != updateRevision.Name && !isTerminating(replicas[target]) {
 
+			// TODO 原地升级：里面有处理生命周期Hook的逻辑
 			inplacing, inplaceUpdateErr := ssc.inPlaceUpdatePod(set, replicas[target], updateRevision, revisions)
 			if inplaceUpdateErr != nil {
 				return &status, inplaceUpdateErr

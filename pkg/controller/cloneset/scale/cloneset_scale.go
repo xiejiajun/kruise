@@ -233,6 +233,7 @@ func (r *realControl) deletePods(cs *appsv1alpha1.CloneSet, podsToDelete []*v1.P
 	var modified bool
 	for _, pod := range podsToDelete {
 		if cs.Spec.Lifecycle != nil && lifecycle.IsPodHooked(cs.Spec.Lifecycle.PreDelete, pod) {
+			// TODO 如果配置了PreDelete Hook， 则先改为PreparingDelete状态(通过添加label的方式)
 			if updated, err := r.lifecycleControl.UpdatePodLifecycle(pod, appspub.LifecycleStatePreparingDelete); err != nil {
 				return false, err
 			} else if updated {
