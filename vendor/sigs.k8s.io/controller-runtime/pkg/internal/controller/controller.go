@@ -180,6 +180,7 @@ func (c *Controller) Start(stop <-chan struct{}) error {
 		c.Log.Info("Starting workers", "worker count", c.MaxConcurrentReconciles)
 		for i := 0; i < c.MaxConcurrentReconciles; i++ {
 			// Process work items
+			// TODO 定时执行worker函数， 最终执行CRD控制器的Reconcile方法（1秒1次）
 			go wait.Until(c.worker, c.JitterPeriod, stop)
 		}
 

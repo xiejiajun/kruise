@@ -164,6 +164,7 @@ func JitterUntil(f func(), period time.Duration, jitterFactor float64, sliding b
 		select {
 		case <-stopCh:
 			return
+			// TODO 等待Timer超时来达到定时的目的
 		case <-t.C:
 			sawTimeout = true
 		}

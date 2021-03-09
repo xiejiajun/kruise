@@ -118,6 +118,8 @@ func (ks *Kind) Start(handler handler.EventHandler, queue workqueue.RateLimiting
 		}
 		return err
 	}
+	// TODO queue用于传递ApiServer返回的资源变动事件给CRD控制器处理， informer监听到资源变动后把事件塞到这个队列，然后
+	//  controller通过协程并发的从这里面取事件来处理
 	i.AddEventHandler(internal.EventHandler{Queue: queue, EventHandler: handler, Predicates: prct})
 	return nil
 }
