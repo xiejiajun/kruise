@@ -70,6 +70,7 @@ func (r *realControl) Manage(
 
 	// 1. scale out
 	if diff < 0 {
+		// TODO 需要扩容
 		// total number of this creation
 		expectedCreations := diff * -1
 		// lack number of current version
@@ -94,16 +95,20 @@ func (r *realControl) Manage(
 	}
 
 	// 2. specified scale in
+	// TODO 获取已经置为预删除状态的Pod列表(需要缩容的Pod)
 	podsSpecifiedToDelete, podsInPreDelete := getPlannedDeletedPods(updateCS, pods)
+	// TODO 去重
 	podsToDelete := util.MergePods(podsSpecifiedToDelete, podsInPreDelete)
 	if len(podsToDelete) > 0 {
 		klog.V(3).Infof("CloneSet %s find pods %v specified to delete and pods %v in preDelete",
 			controllerKey, util.GetPodNames(podsSpecifiedToDelete).List(), util.GetPodNames(podsInPreDelete).List())
 
 		if modified, err := r.managePreparingDelete(updateCS, pods, podsInPreDelete, len(podsToDelete)); err != nil || modified {
+			// 如果有Pod状态成功改为Normal，则直接返回
 			return modified, err
 		}
 
+		// TODO 如果所有Pod状态都为Normal，则删除Pod（具体删除行为要看Pod的PreDelete hook相关的Label / Finalizer还在不在）
 		if modified, err := r.deletePods(updateCS, podsToDelete, pvcs); err != nil || modified {
 			return modified, err
 		}
@@ -111,6 +116,7 @@ func (r *realControl) Manage(
 
 	// 3. scale in
 	if diff > 0 {
+		// TODO 缩容
 		if len(podsToDelete) > 0 {
 			klog.V(3).Infof("CloneSet %s skip to scale in %d for existing pods to delete", controllerKey, diff)
 			return false, nil
@@ -128,19 +134,24 @@ func (r *realControl) Manage(
 }
 
 func (r *realControl) managePreparingDelete(cs *appsv1alpha1.CloneSet, pods, podsInPreDelete []*v1.Pod, numToDelete int) (bool, error) {
+	// TODO cloneSet期望副本数 - 活跃的副本数 + 要删除的副本数 得到最终需要再创建的副本数
 	diff := int(*cs.Spec.Replicas) - len(pods) + numToDelete
 	var modified bool
 	for _, pod := range podsInPreDelete {
 		if diff <= 0 {
+			// TODO 不需要再新建Pod
 			return modified, nil
 		}
 		if isPodSpecifiedDelete(cs, pod) {
+			// TODO 跳过非预删除状态的Pod
 			continue
 		}
 
 		klog.V(3).Infof("CloneSet %s patch pod %s lifecycle from PreparingDelete to Normal",
 			clonesetutils.GetControllerKey(cs), pod.Name)
+		// TODO 如果Pod状态为Normal则updated为false,err为nil，如果不是就更新为Normal, updated返回true
 		if updated, err := r.lifecycleControl.UpdatePodLifecycle(pod, appspub.LifecycleStateNormal); err != nil {
+			// 修改失败
 			return modified, err
 		} else if updated {
 			modified = true
@@ -232,6 +243,7 @@ func (r *realControl) createOnePod(cs *appsv1alpha1.CloneSet, pod *v1.Pod, exist
 func (r *realControl) deletePods(cs *appsv1alpha1.CloneSet, podsToDelete []*v1.Pod, pvcs []*v1.PersistentVolumeClaim) (bool, error) {
 	var modified bool
 	for _, pod := range podsToDelete {
+		// TODO 只要Pod对象还存在PreDelete相关的Label或者Finalizer，永远都到不了正在的删除逻辑
 		if cs.Spec.Lifecycle != nil && lifecycle.IsPodHooked(cs.Spec.Lifecycle.PreDelete, pod) {
 			// TODO 如果配置了PreDelete Hook， 则先改为PreparingDelete状态(通过添加label的方式)
 			if updated, err := r.lifecycleControl.UpdatePodLifecycle(pod, appspub.LifecycleStatePreparingDelete); err != nil {
@@ -245,6 +257,7 @@ func (r *realControl) deletePods(cs *appsv1alpha1.CloneSet, podsToDelete []*v1.P
 			continue
 		}
 
+		// TODO 这下面才是真正的删除Pod的行为
 		clonesetutils.ScaleExpectations.ExpectScale(clonesetutils.GetControllerKey(cs), expectations.Delete, pod.Name)
 		if err := r.Delete(context.TODO(), pod); err != nil {
 			clonesetutils.ScaleExpectations.ObserveScale(clonesetutils.GetControllerKey(cs), expectations.Delete, pod.Name)

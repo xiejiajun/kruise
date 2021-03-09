@@ -18,9 +18,11 @@ import (
 
 func isPodSpecifiedDelete(cs *appsv1alpha1.CloneSet, pod *v1.Pod) bool {
 	if specifieddelete.IsSpecifiedDelete(pod) {
+		// TODO 用户设置了apps.kruise.io/specified-delete=true标签的Pod直接可以删除
 		return true
 	}
 	for _, name := range cs.Spec.ScaleStrategy.PodsToDelete {
+		// TODO CloneSet扩容策略的podsToDelete设置的Pod要删除
 		if name == pod.Name {
 			return true
 		}
@@ -36,6 +38,7 @@ func getPlannedDeletedPods(cs *appsv1alpha1.CloneSet, pods []*v1.Pod) ([]*v1.Pod
 			podsSpecifiedToDelete = append(podsSpecifiedToDelete, pod)
 		}
 		if lifecycle.GetPodLifecycleState(pod) == appspub.LifecycleStatePreparingDelete {
+			// TODO 状态为预删除状态的需要删除
 			podsInPreDelete = append(podsInPreDelete, pod)
 		}
 	}

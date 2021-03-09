@@ -696,6 +696,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 }
 
 func (ssc *defaultStatefulSetControl) deletePod(set *appsv1beta1.StatefulSet, pod *v1.Pod) (bool, error) {
+	// TODO 只要Pod对象还存在PreDelete相关的Label或者Finalizer，永远都到不了正在的删除逻辑
 	if set.Spec.Lifecycle != nil && lifecycle.IsPodHooked(set.Spec.Lifecycle.PreDelete, pod) {
 		if updated, err := ssc.lifecycleControl.UpdatePodLifecycle(pod, appspub.LifecycleStatePreparingDelete); err != nil {
 			return false, err
@@ -706,6 +707,7 @@ func (ssc *defaultStatefulSetControl) deletePod(set *appsv1beta1.StatefulSet, po
 		}
 		return false, nil
 	}
+	// TODO 这下面才是真正的删除Pod的行为
 	if err := ssc.podControl.DeleteStatefulPod(set, pod); err != nil {
 		ssc.recorder.Eventf(set, v1.EventTypeWarning, "FailedDelete", "failed to delete pod %s: %v", pod.Name, err)
 		return false, err

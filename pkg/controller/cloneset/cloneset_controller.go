@@ -224,6 +224,7 @@ func (r *ReconcileCloneSet) doReconcile(request reconcile.Request) (res reconcil
 	}
 
 	// list all active Pods and PVCs belongs to cs
+	// TODO 获取当前CloneSet实例下的活跃的Pod
 	filteredPods, filteredPVCs, err := r.getOwnedResource(instance)
 	if err != nil {
 		return reconcile.Result{}, err
