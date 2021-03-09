@@ -2098,6 +2098,7 @@ func TestStatefulSetControlInPlaceUpdate(t *testing.T) {
 	}
 }
 
+// OpenKruise Pod生命周期钩子功能测试案例
 func TestStatefulSetControlLifecycleHook(t *testing.T) {
 	set := burst(newStatefulSet(3))
 	var partition int32 = 2
@@ -2123,6 +2124,7 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 
 	client := fake.NewSimpleClientset()
 	kruiseClient := kruisefake.NewSimpleClientset(set)
+	// TODO 配置响应钩子的控制器
 	spc, _, ssc, stop := setupController(client, kruiseClient)
 	defer close(stop)
 	if err := scaleUpStatefulSetControl(set, ssc, spc, assertBurstInvariants); err != nil {
@@ -2140,6 +2142,7 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// TODO 获取集群Pod对象列表
 	originalPods, err := spc.podsLister.Pods(set.Namespace).List(selector)
 	if err != nil {
 		t.Fatal(err)
@@ -2155,20 +2158,27 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 	oldRevision := originalPods[2].Labels[apps.StatefulSetRevisionLabel]
 
 	// prepare in-place update pod 2
+	// TODO Pod原地升级预处理, 状态改为PreparingUpdate
 	if err = ssc.UpdateStatefulSet(set, originalPods); err != nil {
 		t.Fatal(err)
 	}
+	// TODO Pod监听
 	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
 	if err != nil {
 		t.Fatal(err)
 	}
 	sort.Sort(ascendingOrdinal(pods))
 
+	// TODO 上面配置了生命周期hook,所以这里正常情况下可以在第三个pod上获取到lifecycle.apps.kruise.io/state=PreparingUpdate的label
+	//  为什么是第二个？ 因为这是Stateful， 更新从最后创建的Pod开始，这里总数为3，但是partition设置为2,所以会保留两个旧版本，所以只会先更新第三个，
+	//  也就是下标为2的Pod
 	if lifecycle.GetPodLifecycleState(pods[2]) != appspub.LifecycleStatePreparingUpdate {
 		t.Fatalf("Expected pod2 in state %v, actually in state %v", appspub.LifecycleStatePreparingUpdate, lifecycle.GetPodLifecycleState(pods[2]))
 	}
 
 	// update pod2 label to be not hooked
+	// TODO 将要更新的Pod的hook标志设为false， 模拟人为处理更新事件：说明这里的Pod更新Hook其实是起到一个更新前暂停的操作，给管理员一个切换
+	//  要原地更新的Pod的流量的提示，这个切换流量的操作可以通过CRD的控制器来自动实现，也可以人为切换后再手动修改对应的label和finalizer
 	pods[2].Labels["unready-block"] = "false"
 
 	// inplace update pod2
@@ -2180,14 +2190,17 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 		t.Fatal(err)
 	}
 	sort.Sort(ascendingOrdinal(pods))
+	// TODO 修改完成后OpenKruise的CRD控制器就会真正执行更新操作了，这里是将镜像更新到上面指定的新版本
 	if pods[2].Spec.Containers[0].Image != "foo" ||
 		pods[2].Labels[apps.StatefulSetRevisionLabel] == oldRevision {
 		t.Fatalf("Expected in-place update pod2, actually got %+v", pods[2])
 	}
 	condition := inplaceupdate.GetCondition(pods[2])
+	// TODO 更新完成后Pod状态为InPlaceUpdateReady
 	if condition == nil || condition.Status != v1.ConditionFalse {
 		t.Fatalf("Expected InPlaceUpdateReady condition False after in-place update, got %v", condition)
 	}
+	// TODO 刷新CRD控制器的更新状态到最新（这一步CRD控制器会自己完成）
 	updateExpectations.ObserveUpdated(getStatefulSetKey(set), pods[2].Labels[apps.StatefulSetRevisionLabel], pods[2])
 
 	// update pod2 status, make pod2 state to be Updated
@@ -2195,6 +2208,7 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 		Name:    "nginx",
 		ImageID: "imgID2",
 	}}
+	// TODO 更新完成修改镜像ID（这一步CRD控制器会自己完成）
 	if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 		t.Fatal(err)
 	}
@@ -2204,10 +2218,12 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 	}
 	sort.Sort(ascendingOrdinal(pods))
 
+	// TODO 修改完就行ID后Pod状态变为已更新
 	if lifecycle.GetPodLifecycleState(pods[2]) != appspub.LifecycleStateUpdated {
 		t.Fatalf("Expected pod2 in state %v, actually in state %v", appspub.LifecycleStateUpdated, lifecycle.GetPodLifecycleState(pods[2]))
 	}
 
+	// TODO 修改pod hook为初始值，下次更新好再次使用
 	// update pod2 to be hooked, pod2 state to Normal
 	pods[2].Labels["unready-block"] = "true"
 	if err = ssc.UpdateStatefulSet(set, pods); err != nil {
@@ -2219,6 +2235,7 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 	}
 	sort.Sort(ascendingOrdinal(pods))
 
+	// TODO 生命周期hook重置后，pod状态改为正常
 	if lifecycle.GetPodLifecycleState(pods[2]) != appspub.LifecycleStateNormal {
 		t.Fatalf("Expected pod2 in state %v, actually in state %v", appspub.LifecycleStateNormal, lifecycle.GetPodLifecycleState(pods[2]))
 	}
@@ -2232,6 +2249,7 @@ func TestStatefulSetControlLifecycleHook(t *testing.T) {
 		t.Fatal(err)
 	}
 	sort.Sort(ascendingOrdinal(pods))
+	// TODO 第二个Pod不会更新为预更新状态，因为partition为2，灰度更新完成后会暂停更新
 	if lifecycle.GetPodLifecycleState(pods[1]) == appspub.LifecycleStatePreparingUpdate {
 		t.Fatalf("Expected pod1 in state %v, actually in state %v", appspub.LifecycleStatePreparingUpdate, lifecycle.GetPodLifecycleState(pods[1]))
 	}

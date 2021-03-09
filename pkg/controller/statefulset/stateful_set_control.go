@@ -117,6 +117,7 @@ func (ssc *defaultStatefulSetControl) UpdateStatefulSet(set *appsv1beta1.Statefu
 	}
 
 	// perform the main update function and get the status
+	// TODO 升级statefulset, 里面调用原地升级逻辑
 	status, getStatusErr := ssc.updateStatefulSet(set, currentRevision, updateRevision, collisionCount, pods, revisions)
 	updateStatusErr := ssc.updateStatefulSetStatus(set, status)
 
@@ -741,6 +742,7 @@ func (ssc *defaultStatefulSetControl) refreshPodState(set *appsv1beta1.StatefulS
 		if set.Spec.Lifecycle == nil ||
 			set.Spec.Lifecycle.InPlaceUpdate == nil ||
 			lifecycle.IsPodAllHooked(set.Spec.Lifecycle.InPlaceUpdate, pod) {
+			// TODO POD的生命周期Hook都reset完成，并且状态是Updated则将状态置为正常Normal
 			state = appspub.LifecycleStateNormal
 		}
 	}
@@ -783,13 +785,16 @@ func (ssc *defaultStatefulSetControl) inPlaceUpdatePod(
 		opts.GracePeriodSeconds = set.Spec.UpdateStrategy.RollingUpdate.InPlaceUpdateStrategy.GracePeriodSeconds
 	}
 
+	// TODO 可以原地升级则尝试原地升级
 	if ssc.inplaceControl.CanUpdateInPlace(oldRevision, updateRevision, opts) {
 		state := lifecycle.GetPodLifecycleState(pod)
 		switch state {
 		case "", appspub.LifecycleStateNormal:
 			var err error
 			var updated bool
+			// TODO 配置了Pod生命周期hook
 			if set.Spec.Lifecycle != nil && lifecycle.IsPodHooked(set.Spec.Lifecycle.InPlaceUpdate, pod) {
+				// TODO 更新生命周期状态为待更新PreparingUpdate（给pod打上lifecycle.apps.kruise.io/state=PreparingUpdate的label）
 				if updated, err = ssc.lifecycleControl.UpdatePodLifecycle(pod, appspub.LifecycleStatePreparingUpdate); err == nil && updated {
 					klog.V(3).Infof("StatefulSet %s updated pod %s lifecycle to PreparingUpdate",
 						getStatefulSetKey(set), pod.Name)
