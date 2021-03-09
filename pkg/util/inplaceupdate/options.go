@@ -61,6 +61,7 @@ func SetOptionsDefaults(opts *UpdateOptions) *UpdateOptions {
 
 // defaultPatchUpdateSpecToPod returns new pod that merges spec into old pod
 func defaultPatchUpdateSpecToPod(pod *v1.Pod, spec *UpdateSpec) (*v1.Pod, error) {
+	// TODO 更新Pod的原地升级信息
 	if spec.MetaDataPatch != nil {
 		cloneBytes, _ := json.Marshal(pod)
 		modified, err := strategicpatch.StrategicMergePatch(cloneBytes, spec.MetaDataPatch, &v1.Pod{})
@@ -74,6 +75,7 @@ func defaultPatchUpdateSpecToPod(pod *v1.Pod, spec *UpdateSpec) (*v1.Pod, error)
 	}
 
 	for i := range pod.Spec.Containers {
+		// TODO 更新image
 		if newImage, ok := spec.ContainerImages[pod.Spec.Containers[i].Name]; ok {
 			pod.Spec.Containers[i].Image = newImage
 		}

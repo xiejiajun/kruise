@@ -77,6 +77,7 @@ func (c *realControl) Manage(cs *appsv1alpha1.CloneSet,
 	// 1. refresh states for all pods
 	var modified bool
 	for _, pod := range pods {
+		// TODO 刷新所有Pod的状态
 		patched, duration, err := c.refreshPodState(cs, coreControl, pod)
 		if err != nil {
 			return 0, err

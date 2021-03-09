@@ -102,6 +102,7 @@ func (c *realControl) Refresh(pod *v1.Pod, opts *UpdateOptions) RefreshResult {
 
 	var delayDuration time.Duration
 	var err error
+	// TODO 原地升级等待间隔
 	if gracePeriod, _ := appspub.GetInPlaceUpdateGrace(pod); gracePeriod != "" {
 		if delayDuration, err = c.finishGracePeriod(pod, opts); err != nil {
 			return RefreshResult{RefreshErr: err}
@@ -188,6 +189,7 @@ func (c *realControl) finishGracePeriod(pod *v1.Pod, opts *UpdateOptions) (time.
 				return nil
 			}
 
+			// TODO 更新Pod中的指定容器的image等支持原地升级的信息
 			if clone, err = opts.PatchSpecToPod(clone, &spec); err != nil {
 				return err
 			}

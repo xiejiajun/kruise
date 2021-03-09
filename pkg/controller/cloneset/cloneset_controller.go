@@ -186,6 +186,7 @@ func (r *ReconcileCloneSet) doReconcile(request reconcile.Request) (res reconcil
 
 	// Fetch the CloneSet instance
 	instance := &appsv1alpha1.CloneSet{}
+	// TODO 获取集群上正在运行的对象实例
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
