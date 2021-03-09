@@ -65,7 +65,9 @@ func (r *realControl) Manage(
 		return false, nil
 	}
 
+	// TODO 拆分已经更新完成的Pod和等待更新的Pod列表
 	updatedPods, notUpdatedPods := clonesetutils.SplitPodsByRevision(pods, updateRevision)
+	// TODO 基于活跃的Pod数以及等待更新的Pod数计算
 	diff, currentRevDiff := calculateDiffs(updateCS, len(pods), len(notUpdatedPods))
 
 	// 1. scale out

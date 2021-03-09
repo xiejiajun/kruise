@@ -104,9 +104,11 @@ func IsRunningAndAvailable(pod *v1.Pod, minReadySeconds int32) bool {
 // SplitPodsByRevision returns Pods matched and unmatched the given revision
 func SplitPodsByRevision(pods []*v1.Pod, rev string) (matched, unmatched []*v1.Pod) {
 	for _, p := range pods {
+		// TODO Pod的controller-revision-hash标签会保存基于创建该Pod的template计算得到的revision hash
 		if GetPodRevision("", p) == rev {
 			matched = append(matched, p)
 		} else {
+			// TODO 如果Pod的label中获取到的revision hash和最新Template计算得到的revision hash不一致，则表明它需要被更新
 			unmatched = append(unmatched, p)
 		}
 	}

@@ -88,19 +88,26 @@ func getOrGenInstanceID(existingIDs, availableIDs sets.String) string {
 	return id
 }
 
+// totalPods: 活跃的Pod数， notUpdatedPods: 等待更新的Pod总数
 func calculateDiffs(cs *appsv1alpha1.CloneSet, totalPods int, notUpdatedPods int) (totalDiff int, currentRevDiff int) {
 	var partition int
 	if cs.Spec.UpdateStrategy.Partition != nil {
+		// 灰度分批发布需要保留的老版本数
 		partition, _ = intstrutil.GetValueFromIntOrPercent(cs.Spec.UpdateStrategy.Partition, int(*cs.Spec.Replicas), true)
 	}
 
 	if partition >= int(*cs.Spec.Replicas) {
+		// TODO 当前活跃的Pod数 - CloneSet期望副本数得到需要更新的Pod数：totalPods只会小于等于期望副本数
 		totalDiff = totalPods - int(*cs.Spec.Replicas)
+		// TODO 还没更新的Pod数 - 期望副本数: notUpdatedPods也只会小于等于期望副本数
+		//  也就是partition数大于期望副本数的适合，如果已经更新过一部分了，notUpdatedPods会小于期望副本数，这时候currentRevDiff会是负值
+		//  但是如果活跃的副本数已经达到期望副本数的话，从realControl.Manage方法的逻辑可以知道是不会触发任何更新的
 		currentRevDiff = notUpdatedPods - int(*cs.Spec.Replicas)
 		return
 	}
 
 	var maxSurge int
+	// TODO 本次要更新的 = 还未更新的 - partition
 	currentRevDiff = notUpdatedPods - partition
 	// Use maxSurge only if partition has not satisfied
 	if currentRevDiff > 0 {
