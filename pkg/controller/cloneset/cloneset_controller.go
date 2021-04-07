@@ -125,6 +125,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// TODO 使用handler.EnqueueRequestForOwner进行Watch，Pod对象变动时自动将其Owner CloneSet对象enqueue是否会更优雅？
 	// Watch for changes to Pod
 	err = c.Watch(&source.Kind{Type: &v1.Pod{}}, &podEventHandler{Reader: mgr.GetCache()})
 	if err != nil {
