@@ -157,6 +157,7 @@ func GetPersistentVolumeClaims(cs *appsv1alpha1.CloneSet, pod *v1.Pod) map[strin
 		}
 		claim.Labels[appsv1alpha1.CloneSetInstanceID] = pod.Labels[appsv1alpha1.CloneSetInstanceID]
 		if ref := metav1.GetControllerOf(pod); ref != nil {
+			// TODO 通过OwnerReferences关联，方便级联删除
 			claim.OwnerReferences = append(claim.OwnerReferences, *ref)
 		}
 		claims[templates[i].Name] = *claim

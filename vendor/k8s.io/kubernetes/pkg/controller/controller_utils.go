@@ -558,6 +558,7 @@ func GetPodFromTemplate(template *v1.PodTemplateSpec, parentObject runtime.Objec
 		},
 	}
 	if controllerRef != nil {
+		// TODO 为Pod资源设置OwnerReferences属性，将其和CRD关联，方便在删除CRD对象时自动级联删除它
 		pod.OwnerReferences = append(pod.OwnerReferences, *controllerRef)
 	}
 	pod.Spec = *template.Spec.DeepCopy()
